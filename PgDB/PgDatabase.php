@@ -816,7 +816,7 @@ class PgDatabase {
      *  @return object
      *  @access public
      */
-    public function query($query, $values=NULL) {
+    public function query($query, $values=NULL, $returnRaw=FALSE) {
         $query_sent = FALSE;
         if ($this->connection) {
             if (\is_array($values)) {
@@ -838,6 +838,9 @@ class PgDatabase {
             $status = \pg_result_error_field($result, PGSQL_DIAG_SQLSTATE);
             switch ($status) {
             case '': // Weird Postgres doesn't report SUCESS, right?
+                if ($returnRaw) {
+                    return $result;
+                }
                 $resultSet = new PgResultSet($result);
                 return $resultSet;
                 break;
@@ -1024,7 +1027,7 @@ if (defined('STDIN')) {
     $firstBob = $results->getObject('PgDB\MyBob', 0);
     echo "First again: ".$firstBob->name."\n";
     $nextBob = $results->getObject('PgDB\MyBob', 1);
-    echo "This is the 2nd Bob: ".$nextBob->name;
+    echo "This is the 2nd Bob: ".$nextBob->name."\n";
     $theSameFirstBob = $results->get();
     // Use whichever form you prefer, each has its advantages, and they are 
     // both equally fast (or slow):
@@ -1032,6 +1035,13 @@ if (defined('STDIN')) {
     // Just to make sure we have 20 new rows:
     $results = $db->query('SELECT * FROM test;');
     assert($results->getLength() == $currentNumberOfRows + 20);
+    // Now, let's use the $returnRaw flag. Note the NULL instead of $values.
+    $results = $db->query('SELECT * FROM test LIMIT 1;', NULL, $returnRaw=TRUE);
+    echo var_dump($results);
+    echo "\n";
+    $firstBob = \pg_fetch_array($results, 0);
+    echo "First Bob from raw: ".$firstBob['name']."\n";
+
 }
 
 ?>
