@@ -337,9 +337,67 @@ class PgResultSet {
      */
     protected $objSet = NULL;
 
+    /**
+     *  Object counter
+     *
+     *  The internal counter used to track the last returned object.
+     *
+     *  @access protected
+     *  @var integer
+     */
+    protected $objectCounter = NULL;
+
+
+    /**
+     *  All result rows as an array
+     *
+     *  As soon as the PgResultSet object is created, it loads all results as 
+     *  an array. This is done so that multiple calls to methods like {@link 
+     *  all()} or {@link last()} can be made at any time.
+     *
+     *  @access protected
+     *  @var array
+     */
+    protected $resultArray = array();
+
+    /**
+     *  Array counter
+     *
+     *  The internal counter that keeps track of the last returned records, 
+     *  used by the {@link next()} method.
+     *
+     *  @access protected
+     *  @var integer
+     */
+    protected $arrayCounter = NULL;
+
     public function __construct($result) {
         $this->rawResult = $result;
         $this->length = \pg_num_rows($result);
+        // This gets all results as arrays, and we use this instead of the raw 
+        // result resource. However, this also means the result resource will 
+        // be empty.
+        $this->resultArray = \pg_fetch_all($result);
+    }
+
+
+    /**
+     *  Create an instance of a class using row data
+     *
+     *  The $row argument is used to specify the row that will be used to 
+     *  instantiate the calss. The $classname is a string containing the class 
+     *  name.
+     *
+     *  @param string $classname Name of the class
+     *  @param integer $row The row index
+     *  @return object
+     *  @access protected
+     */
+    protected function makeInstance($classname, $row) {
+        echo "Row: $row\n";
+        $constructorArgs = $this->resultArray[$row];
+        $reflector = new \ReflectionClass($classname);
+        return $reflector->newInstanceArgs($constructorArgs);
     }
 
     /**
@@ -361,7 +419,7 @@ class PgResultSet {
      *  @access public
      */
     public function getObject($classname, $row=0) {
-        return \pg_fetch_object($this->rawResult, $row, $classname);
+        return $this->makeInstance($classname, $row);
     }
 
     /**
@@ -380,7 +438,16 @@ class PgResultSet {
      *  @access public
      */
     public function nextObject($classname) {
-        return \pg_fetch_object($this->rawResult, $class_name=$classname);
+        if (is_null($this->objectCounter)) {
+            $this->objectCounter = 0;
+        }
+        else {
+            $this->objectCounter += 1;
+        }
+        if ($this->objectCounter < $this->length) {
+            return $this->makeInstance($classname, $this->objectCounter);
+        }
+        return NULL;
     }
 
     /**
@@ -395,7 +462,7 @@ class PgResultSet {
      *  @access public
      */
     public function lastObject($classname) {
-        return \pg_fetch_object($this->rawResult, $this->length - 1, $classname);
+        return $this->makeInstance($classname, $this->length - 1);
     }
 
     /**
@@ -415,12 +482,11 @@ class PgResultSet {
         if ($this->objSet) {
             return $this->objSet;
         }
-        $objSet = array();
+        $this->objSet = array();
         for ($i=0; $i < $this->length; $i++) { 
-            $objSet[] = \pg_fetch_object($this->rawResult, $i, $className);
+            $this->objSet[] = $this->makeInstance($clasname, $i);
         }
-        $this->objSet = $objSet;
-        return $objSet;
+        return $this->objSet;
     }
 
     /**
@@ -442,7 +508,7 @@ class PgResultSet {
      *  @access public
      */
     public function all() {
-        return \pg_fetch_all($this->rawResult);       
+        return $this->resultArray;       
     }
 
     /**
@@ -456,7 +522,7 @@ class PgResultSet {
      *  @access public
      */
     public function get($row=0) {
-        return \pg_fetch_assoc($this->rawResult, $row);
+        return $this->resultArray[$row];
     }
 
     /**
@@ -472,7 +538,16 @@ class PgResultSet {
      *  @access public
      */
     public function next() {
-        return \pg_fetch_assoc($this->rawResult);
+        if (is_null($this->arrayCounter)) {
+            $this->arrayCounter = -1;
+        }
+        else {
+            $this->arrayCounter += 1;
+        }
+        if ($this->arrayCounter < $this.length) {
+            return $this->resultArray[$this->arrayCounter];
+        }
+        return NULL;
     }
 
     /**
@@ -486,7 +561,7 @@ class PgResultSet {
      *  @access public
      */
     public function last() {
-        return \pg_fetch_assoc($this->rawResult, $this->length - 1);
+        return $this->resultArray[$this->length - 1];
     }
 
     /**
@@ -882,41 +957,81 @@ if (defined('STDIN')) {
         // 'password' => 'yourpass',
         'user' => 'postgres'
     );
+
     // Initialize the database object
     $db = new PgDatabase($opts);
+
     // Connect to the database
     $db->connect();
+
     // Confirm that we're connected:
     assert($db->getConnection());
+
     // Connection status should be PGSQL_CONNECTION_OK:
     assert(\pg_connection_status($db->getConnection()) == PGSQL_CONNECTION_OK);
+
     // Confrim that we're connected to a database 'test':
     assert(\pg_dbname($db->getConnection()) == 'test');
+
     // Let's get anything that is already in the database
-    $result = $db->query('SELECT * FROM test;');
-    $curentlyNumberOfRows = $result->getLength();
-    echo "We have $curentlyNumberOfRows rows in the database.\n";
+    // Look, ma, no template!
+    $results = $db->query('SELECT * FROM test;');
+
+    // Let's find out how many results were returned
+    $currentNumberOfRows = $results->getLength();
+    echo "We have $currentNumberOfRows rows in the database.\n";
+
     // Here's our insert query with two variables, $name and $age:
     $query = 'INSERT INTO test (name, age) VALUES (\'$name\', $age);';
+
     // Let's loop and insert multiple records
-    for ($i=$curentlyNumberOfRows + 1; $i < $curentlyNumberOfRows + 21; $i++) {
+    for ($i=$currentNumberOfRows + 1; $i < $currentNumberOfRows + 21; $i++) {
         // We assign the results to a variable to we can do fun stuff later
-        $result = $db->query($query, array('name'=>'Bob '.$i, 'age'=>$i));
+        $results = $db->query($query, array('name'=>'Bob '.$i, 'age'=>$i));
         // We can test the numbers of rows affected:
     }
-    // Let's do a select now:
-    $query = 'SELECT * FROM test;';
-    // This time we do care about results and we don't use a query template
+
+    // Let's do a new select now:
+    $query = 'SELECT * FROM test LIMIT 5;';
     $results = $db->query($query);
-    echo 'Rows returned: '.$results->getLength()."\n";
+
+    // Make sure only 5 items were returned:
+    assert($results->getLength() == 5);
+
+    echo 'Got '.$results->getLength()." rows, expected 5\n";
     $resultArray = $results->all();
+
     echo "First bob: ".$resultArray[0]['name']."\n";
-    // The next one doesn't work, but what the heck!
-    $lastBob = $result->last();
+    $lastBob = $results->last();
     echo "Last bob: ".$lastBob['name']."\n";
-    echo "Oops! Can't call last(), after calling all(), sorry!";
+    // Let's call this a 'model' class.
+    // The idea is to populate the new instances with the data from the database 
+    // automagically, by just passing the class name to the *Object() methods.
+    class MyBob {
+        // The properties need not be public, but we use public properties
+        // so we can avoid writing accessors, just for demonstration purposes, 
+        // obviously.
+        public $name; // This matches the table's column
+        public $age; // As does this one.
+        // You can have more properties, but currently there is no way of 
+        // specifying extra properties. That'll be implemented in 0.3 release.
+        public function __construct($name, $age) {
+            $this->name = $name;
+            $this->age = $age;
+        }
+    }
+    // Watch out: You must provide the full namespace when calling getObject()!
+    $firstBob = $results->getObject('PgDB\MyBob', 0);
+    echo "First again: ".$firstBob->name."\n";
+    $nextBob = $results->getObject('PgDB\MyBob', 1);
+    echo "This is the 2nd Bob: ".$nextBob->name;
+    $theSameFirstBob = $results->get();
+    // Use whichever form you prefer, each has its advantages, and they are 
+    // both equally fast (or slow):
+    assert($theSameFirstBob['name'] == $firstBob->name);
     // Just to make sure we have 20 new rows:
-    assert($results->getLength() == $curentlyNumberOfRows + 20);
+    $results = $db->query('SELECT * FROM test;');
+    assert($results->getLength() == $currentNumberOfRows + 20);
 }
 
 ?>
