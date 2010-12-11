@@ -888,6 +888,8 @@ if (defined('STDIN')) {
     $db->connect();
     // Confirm that we're connected:
     assert($db->getConnection());
+    // Connection status should be PGSQL_CONNECTION_OK:
+    assert(\pg_connection_status($db->getConnection()) == PGSQL_CONNECTION_OK);
     // Confrim that we're connected to a database 'test':
     assert(\pg_dbname($db->getConnection()) == 'test');
     // Let's get anything that is already in the database
