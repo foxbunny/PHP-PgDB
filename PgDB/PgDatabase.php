@@ -412,6 +412,9 @@ class PgResultSet {
      *  Therefore, you can use this as a shortcut to get the first object in 
      *  the record set.
      *
+     *  Note that the class name must be fully qualified with namespace if it 
+     *  is defined under a namespace.
+     *
      *  @param string $classname Name of the class to use for creating new 
      *  objects
      *  @param integer $row The row number of the record to return
@@ -427,10 +430,11 @@ class PgResultSet {
      *
      *  When called multiple times, this method returns the recors from the 
      *  result set one by one. It will always return the object that comes 
-     *  after the last object retrieved. This is true even if you retrieved 
-     *  objects using other methods. It returns no objects if you've called 
-     *  allObjects(). See the description of the {@link getObject()} method on 
-     *  how objects are created.
+     *  after the last object retrieved. The counter used internally for this 
+     *  method to keep track of returned objects is not affected by other 
+     *  methods. For example, if you called {@link getObject()} to return the 
+     *  first object, a subsequent call to nextObject() will return, again, the 
+     *  first object (if called for the first time).
      *
      *  @param string $classname Name of the class to use for creating the 
      *  objects
@@ -501,8 +505,8 @@ class PgResultSet {
      *      echo $arr[10]['address'];
      *      ....
      *  
-     *  This is probably a more efficient way to retrieve records as it is a 
-     *  simple thin wrapper around the native pg_fetch_all() function.
+     *  Since this method does not look through the results, it is slightly 
+     *  more efficient than the {@link allObjects()} method.
      *
      *  @return array
      *  @access public
@@ -529,10 +533,9 @@ class PgResultSet {
      *  Return the next record as an associative array
      *
      *  This method can be called sequentially to return records in the result 
-     *  set one by one. You should note that the next row is always the next 
-     *  row regardless of the method you've called, so a call to {@link all()} 
-     *  may cause this method to return no records. See the documentation on 
-     *  {@link get()} for more information on the return format.
+     *  set one by one. Keep in mind that the internal counter used to keep 
+     *  track of the returned rows is unaffected by other methods like {@link 
+     *  get()}, or {@link last()}.
      *
      *  @return array
      *  @access public
@@ -586,6 +589,12 @@ class PgResultSet {
 
     /**
      *  Return the raw result for use with pg_* functions
+     *
+     *  Note that the resource object is always 'drained' of rows (i.e., all 
+     *  rows have already been fetched from it) during instantiation of the 
+     *  PgResultSet object, so pg_fetch_* functions cannot be performed on the 
+     *  returned resource. Consider calling PgDatabase's {@link query()} method 
+     *  with $returnRaw flag set to TRUE to get a raw resource.
      *
      *  @return object
      *  @access public
