@@ -1053,7 +1053,21 @@ if (defined('STDIN')) {
     echo "\n";
     $firstBob = \pg_fetch_array($results, 0);
     echo "First Bob from raw: ".$firstBob['name']."\n";
-
+    // Let's get something more exotic out of the DB
+    $age = 15;
+    $query = 'SELECT COUNT(name) as older_than FROM test WHERE age > $age;';
+    $results = $db->query($query, array('age' => $age));
+    $count = $results->get();
+    // There should be just one record
+    assert($results->getLength() == 1);
+    echo "There are ".$count['older_than']." Bobs older than $age\n";
+    // How about exception handling?
+    try {
+        $db->query('BAD SQL');
+    }
+    catch (SyntaxError $e){
+        echo "We had a syntax error, alright!\n";
+    }
 }
 
 ?>
