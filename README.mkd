@@ -1,5 +1,5 @@
-PHP PgDatabase
-==============
+PHP PgDB
+========
 
 PHP PostgreSQL extension abstraction class.
 
