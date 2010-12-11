@@ -24,6 +24,12 @@ diligent developer to sanitize the input values before you pass them as query
 variables. See the rest of the documentation in the ``PgDB/PgDatabase.php``
 file.
 
+Example code
+------------
+
+At the bottom of the ``PgDB/PgDatabase.php``, you will find an example usage of
+the PgDatabase class.
+
 License
 -------
 

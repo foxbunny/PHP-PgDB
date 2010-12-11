@@ -907,6 +907,12 @@ if (defined('STDIN')) {
     // This time we do care about results and we don't use a query template
     $results = $db->query($query);
     echo 'Rows returned: '.$results->getLength()."\n";
+    $resultArray = $results->all();
+    echo "First bob: ".$resultArray[0]['name']."\n";
+    // The next one doesn't work, but what the heck!
+    $lastBob = $result->last();
+    echo "Last bob: ".$lastBob['name']."\n";
+    echo "Oops! Can't call last(), after calling all(), sorry!";
     // Just to make sure we have 20 new rows:
     assert($results->getLength() == $curentlyNumberOfRows + 20);
 }
