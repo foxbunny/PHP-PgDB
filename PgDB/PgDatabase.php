@@ -809,10 +809,13 @@ class PgDatabase {
      *  If the query fails for any reason, an appropriate exception will be 
      *  raised as detailed in {@link Exceptions} section.
      *
-     *  On success, the query() method returns a {@link PgResultSet} object.
+     *  On success, the query() method returns a {@link PgResultSet} object. If 
+     *  the $returnRaw flag is set to TRUE, the raw result resource is returned 
+     *  instead.
      *
      *  @param string $query Raw SQL query or query template
      *  @param array $value Values for template variables
+     *  @param boolean $returnRaw Returns the raw result resource if TRUE
      *  @return object
      *  @access public
      */
