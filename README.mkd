@@ -3,6 +3,16 @@ PHP PgDB
 
 PHP PostgreSQL extension abstraction class.
 
+New in 0.2
+----------
+
+* The PgResultSet API was complete reworked to allow multiple calls to all it's
+  methods without side-effects (except for the next() and nextObject() methods
+  that behave the way they did in 0.1 release).
+
+* The $returnRaw flag was added to query() method in PgDatabae, so that you can
+  get the raw result resource instead of the PgResultSet instance.
+
 Compatibility
 -------------
 
