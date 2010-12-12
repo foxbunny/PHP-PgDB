@@ -386,16 +386,19 @@ class PgResultSet {
      *
      *  The $row argument is used to specify the row that will be used to 
      *  instantiate the calss. The $classname is a string containing the class 
-     *  name.
+     *  name. The $extraOptions is used to add arguments to the constructor 
+     *  that are not included in the record itself.
      *
      *  @param string $classname Name of the class
      *  @param integer $row The row index
+     *  @param array $extraOptions (defaults to array()) Extra constructor 
+     *  arguments
      *  @return object
      *  @access protected
      */
-    protected function makeInstance($classname, $row) {
-        echo "Row: $row\n";
+    protected function makeInstance($classname, $row, $extraOptions=array()) {
         $constructorArgs = $this->resultArray[$row];
+        $constructorArgs = \array_merge($constructorArgs, $extraOptions);
         $reflector = new \ReflectionClass($classname);
         return $reflector->newInstanceArgs($constructorArgs);
     }
@@ -418,11 +421,13 @@ class PgResultSet {
      *  @param string $classname Name of the class to use for creating new 
      *  objects
      *  @param integer $row The row number of the record to return
+     *  @param array $extraOptions (defaults to array()) Extra constructor 
+     *  arguments {@see makeInstance()}
      *  @return object
      *  @access public
      */
-    public function getObject($classname, $row=0) {
-        return $this->makeInstance($classname, $row);
+    public function getObject($classname, $row=0, $extraOptions=array()) {
+        return $this->makeInstance($classname, $row, $extraOptions);
     }
 
     /**
@@ -438,10 +443,12 @@ class PgResultSet {
      *
      *  @param string $classname Name of the class to use for creating the 
      *  objects
+     *  @param array $extraOptions (defaults to array()) Extra constructor 
+     *  arguments {@see makeInstance()}
      *  @return object
      *  @access public
      */
-    public function nextObject($classname) {
+    public function nextObject($classname, $extraOptions=array()) {
         if (is_null($this->objectCounter)) {
             $this->objectCounter = 0;
         }
@@ -449,7 +456,7 @@ class PgResultSet {
             $this->objectCounter += 1;
         }
         if ($this->objectCounter < $this->length) {
-            return $this->makeInstance($classname, $this->objectCounter);
+            return $this->makeInstance($classname, $this->objectCounter, $extraOptions);
         }
         return NULL;
     }
@@ -462,11 +469,13 @@ class PgResultSet {
      *
      *  @param string $classname Name of the class to use for creating the 
      *  object
+     *  @param array $extraOptions (defaults to array()) Extra constructor 
+     *  arguments {@see makeInstance()}
      *  @return object
      *  @access public
      */
-    public function lastObject($classname) {
-        return $this->makeInstance($classname, $this->length - 1);
+    public function lastObject($classname, $extraOptions=array()) {
+        return $this->makeInstance($classname, $this->length - 1, $extraOptions);
     }
 
     /**
@@ -479,16 +488,18 @@ class PgResultSet {
      *
      *  @param string $classname Name of the class to use for creating the 
      *  objects
+     *  @param array $extraOptions (defaults to array()) Extra constructor 
+     *  arguments {@see makeInstance()}
      *  @return array
      *  @access public
      */
-    public function allObjects($className) {
+    public function allObjects($className, $extraOptions=array()) {
         if ($this->objSet) {
             return $this->objSet;
         }
         $this->objSet = array();
         for ($i=0; $i < $this->length; $i++) { 
-            $this->objSet[] = $this->makeInstance($clasname, $i);
+            $this->objSet[] = $this->makeInstance($clasname, $i, $extraOptions);
         }
         return $this->objSet;
     }
@@ -965,6 +976,11 @@ class PgDatabase {
  */
 
 if (defined('STDIN')) {
+    // Time the test
+    $mtime = microtime();
+    $mtime = explode(" ",$mtime);
+    $mtime = $mtime[1] + $mtime[0];
+    $starttime = $mtime;
     // Some basic options
     $opts = array(
         'dbname' => 'test',
@@ -1041,6 +1057,7 @@ if (defined('STDIN')) {
     $nextBob = $results->getObject('PgDB\MyBob', 1);
     echo "This is the 2nd Bob: ".$nextBob->name."\n";
     $theSameFirstBob = $results->get();
+
     // Use whichever form you prefer, each has its advantages, and they are 
     // both equally fast (or slow):
     assert($theSameFirstBob['name'] == $firstBob->name);
@@ -1068,6 +1085,29 @@ if (defined('STDIN')) {
     catch (SyntaxError $e){
         echo "We had a syntax error, alright!\n";
     }
+    // Another test with classes. This time with extra params.
+    $results = $db->query('SELECT * FROM test LIMIT 1;');
+    class MyOtherBob {
+        public $name;
+        public $age;
+        public $somethingElse;
+        public function __construct($name, $age, $somethingElse) {
+            $this->name = $name;
+            $this->age = $age;
+            $this->somethingElse = $somethingElse;
+        }
+    }
+    $bob = $results->getObject('PgDB\MyOtherBob', 0, array('somethingElse' => 'this'));
+    assert($bob->somethingElse == 'this');
+    echo var_dump($bob); 
+
+    // Stop timer
+    $mtime = microtime();
+    $mtime = explode(" ",$mtime);
+    $mtime = $mtime[1] + $mtime[0];
+    $endtime = $mtime;
+    $totaltime = ($endtime - $starttime);
+    echo "Test run time is ".$totaltime." seconds";
 }
 
 ?>
