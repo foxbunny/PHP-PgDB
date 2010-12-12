@@ -37,8 +37,8 @@ file.
 Example code
 ------------
 
-At the bottom of the ``PgDB/PgDatabase.php``, you will find an example usage of
-the PgDatabase class.
+The ``test.php`` file contains some test code. Althought it's purpose is to
+test the PgDatabase class, you can also read it as an example its usage.
 
 License
 -------
