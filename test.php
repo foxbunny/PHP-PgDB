@@ -1,6 +1,7 @@
 <?php
 
 require dirname(__FILE__).'/PgDB/PgDatabase.php';
+require dirname(__FILE__).'/PgDB/PgParser.php';
 
 /**************************************************************
  *  Example usage (and test)
@@ -147,6 +148,30 @@ if (defined('STDIN')) {
     $bob = $results->getObject('MyOtherBob', 0, array('somethingElse' => 'this'));
     assert($bob->somethingElse == 'this');
     echo var_dump($bob); 
+   
+    // Parser tests
+
+    // Break on boolean cast of a non-boolean string
+    try {
+        PgDB\PgParser::bool($bob->name);
+    }
+    catch (PgDB\PgParserError $e) {
+        echo "Parse was not successful\n";
+        assert($e->getValue() == $bob->name);
+    }
+
+    // Break on integer cast of a non-integer string
+    try {
+        PgDB\PgParser::int($bob->name);
+    }
+    catch (PgDB\PgParserError $e) {
+        echo "Parse was not successful\n";
+    }
+
+    assert(is_string($bob->age) == TRUE);
+    $age = PgDB\PgParser::int($bob->age);
+    assert(is_int($age) == TRUE);
+
 
     // Stop timer
     $mtime = microtime();
@@ -155,6 +180,7 @@ if (defined('STDIN')) {
     $endtime = $mtime;
     $totaltime = ($endtime - $starttime);
     echo "Test run time is ".$totaltime." seconds";
+ 
 }
 
 ?>
